@@ -7,6 +7,9 @@
 #define TEACHER_FILE "data/teachers.txt"
 #define STUDENT_ACCOUNT_FILE "data/student_accounts.txt"
 
+// Global variable to store currently logged-in student's roll number
+static int currentLoggedInStudent = -1;
+
 // TEACHER LOGIN
 
 int teacherLogin() {
@@ -84,5 +87,19 @@ int studentLogin() {
     }
 
     printf("Welcome %s!\n", s->name);
+    
+    // Store the logged-in student's roll number
+    currentLoggedInStudent = rollno;
+    
     return 1;
+}
+
+// Function to get current logged-in student's roll number
+int getCurrentLoggedInStudent() {
+    return currentLoggedInStudent;
+}
+
+// Function to clear logged-in student (for logout)
+void clearLoggedInStudent() {
+    currentLoggedInStudent = -1;
 }

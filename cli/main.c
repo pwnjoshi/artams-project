@@ -57,6 +57,7 @@ void mainMenu() {
     else if (mode == 2) {
         if (studentLogin()) {   // Student authentication
             studentMenu();
+            clearLoggedInStudent(); // Clear session when returning to main menu
         } else {
             printf("Returning to main menu...\n");
         }
@@ -142,36 +143,29 @@ void studentMenu() {
     double classroom_lat, classroom_lon;
     Student *s;
 
+    // Get the logged-in student's roll number
+    rollNo = getCurrentLoggedInStudent();
+    
+    if (rollNo == -1) {
+        printf("Error: No student logged in!\n");
+        return;
+    }
+
+    // Get student details
+    s = searchStudent(rollNo);
+    if (!s) {
+        printf("Error: Student record not found!\n");
+        return;
+    }
+
     printf("\n=== Student Attendance Marking ===\n");
+    printf("Logged in as: %s (Roll No: %d)\n", s->name, rollNo);
     
     getCurrentClassroomLocation(&classroom_lat, &classroom_lon);
 
+    // Token validation loop
     while (1) {
-        printf("\nEnter Roll No: ");
-        scanf("%d", &rollNo);
-
-        s = searchStudent(rollNo);
-        if (!s) {
-            char choice;
-            printf("Student not found in database!\n");
-            printf("Do you want to try again? (y/n): ");
-            fflush(stdout);
-            clearInputBuffer();
-            scanf(" %c", &choice);
-            if (choice == 'y' || choice == 'Y') {
-                continue;
-            } else {
-                printf("Returning to main menu...\n");
-                return;
-            }
-        } else {
-            printf("Student found: %s\n", s->name);
-            break;
-        }
-    }
-    
-    while (1) {
-        printf("Enter Token: ");
+        printf("\nEnter Token: ");
         scanf("%s", token);
 
         if (!validateToken("data/sessions.txt", token)) {
@@ -193,6 +187,7 @@ void studentMenu() {
         }
     }
     
+    // Location validation loop
     while (1) {
         printf("\nEnter Location (latitude longitude): ");
         scanf("%lf %lf", &lat, &lon);
@@ -220,7 +215,9 @@ void studentMenu() {
         }
     }
 
+    // Mark attendance using the logged-in student's roll number
     markAttendance(rollNo, lat, lon, "Present");
 
+    printf("Attendance marked successfully for %s!\n", s->name);
     printf("Your location: (%.6f, %.6f)\n", lat, lon);
 }
