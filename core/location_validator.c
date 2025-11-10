@@ -1,3 +1,5 @@
+// location_validator.c  (patched)
+
 #include "location_validator.h"
 #include <math.h>
 #include <stdio.h>
@@ -5,8 +7,9 @@
 
 static double class_lat = 0.0;
 static double class_lon = 0.0;
+static int classroom_set = 0;   // NEW: explicit flag indicating classroom coordinates are set
 
-#define MAX_RADIUS_KM 0.1
+#define MAX_RADIUS_KM 0.2
 #define PI 3.14159265358979323846
 #define EARTH_RADIUS_KM 6372.0
 #define CLASSROOM_FILE "data/classroom.txt"
@@ -33,39 +36,74 @@ static double haversineDistance(double lat1, double lon1, double lat2, double lo
 void setClassroomLocation(double lat, double lon) {
     class_lat = lat;
     class_lon = lon;
+    classroom_set = 1; // Mark as explicitly set
     
     FILE* file = fopen(CLASSROOM_FILE, "w");
     if (file) {
         fprintf(file, "%.6f %.6f\n", lat, lon);
         fclose(file);
+        // Debug confirmation
+        
+        fflush(stdout);
+    } else {
+        // If file can't be written, still keep in-memory values but warn
+        
+        fflush(stdout);
     }
 }
 
 void loadClassroomLocation() {
     FILE* file = fopen(CLASSROOM_FILE, "r");
     if (file) {
-        if (fscanf(file, "%lf %lf", &class_lat, &class_lon) != 2) {
+        if (fscanf(file, "%lf %lf", &class_lat, &class_lon) == 2) {
+            classroom_set = 1;
+            // Debug confirmation
+            
+            fflush(stdout);
+        } else {
+            // Failed to parse: keep values unchanged and mark as not set
             class_lat = 0.0;
             class_lon = 0.0;
+            classroom_set = 0;
+           
+            fflush(stdout);
         }
         fclose(file);
+    } else {
+        // File doesn't exist
+        classroom_set = 0;
+        // Not an error — teacher simply hasn't set location yet
     }
-    // If file doesn't exist, defaults remain (0, 0)
 }
 
 void getCurrentClassroomLocation(double* lat, double* lon) {
-    // Load from file if not set in memory
-    if (class_lat == 0.0 && class_lon == 0.0) {
+    // Lazy-load from file if not set in memory
+    if (!classroom_set) {
         loadClassroomLocation();
     }
+
+    if (!classroom_set) {
+        // Return zeros but indicate via debug that location is not set
+        
+        fflush(stdout);
+    }
+
     *lat = class_lat;
     *lon = class_lon;
 }
 
 int validateLocation(double lat, double lon) {
 
-    if (class_lat == 0.0 && class_lon == 0.0) {
+    if (!classroom_set) {
+        // Try load once more (in case caller didn't call getCurrentClassroomLocation)
         loadClassroomLocation();
+    }
+
+    if (!classroom_set) {
+        // Classroom location is not set — cannot validate
+        printf("ERROR: Classroom location not configured. Please ask teacher to set classroom location first.\n");
+        fflush(stdout);
+        return 0;
     }
     
     double distance = haversineDistance(class_lat, class_lon, lat, lon);
@@ -78,9 +116,12 @@ int validateLocation(double lat, double lon) {
 
 double getDistanceFromClassroom(double lat, double lon) {
     // Ensure classroom location is loaded from file
-    if (class_lat == 0.0 && class_lon == 0.0) {
+    if (!classroom_set) {
         loadClassroomLocation();
+    }
+    if (!classroom_set) {
+        // Indicate invalid/unset with a negative value
+        return -1.0;
     }
     return haversineDistance(class_lat, class_lon, lat, lon);
 }
-
