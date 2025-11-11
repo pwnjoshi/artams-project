@@ -1,3 +1,5 @@
+// location_validator.c  (patched)
+
 #include "location_validator.h"
 #include <math.h>
 #include <stdio.h>
@@ -5,8 +7,9 @@
 
 static double class_lat = 0.0;
 static double class_lon = 0.0;
+static int classroom_set = 0;   // NEW: explicit flag indicating classroom coordinates are set
 
-#define MAX_RADIUS_KM 0.1
+#define MAX_RADIUS_KM 0.2  // 200 meters
 #define PI 3.14159265358979323846
 #define EARTH_RADIUS_KM 6372.0
 #define CLASSROOM_FILE "data/classroom.txt"
@@ -33,6 +36,7 @@ static double haversineDistance(double lat1, double lon1, double lat2, double lo
 void setClassroomLocation(double lat, double lon) {
     class_lat = lat;
     class_lon = lon;
+    classroom_set = 1;
     
     FILE* file = fopen(CLASSROOM_FILE, "w");
     if (file) {
@@ -44,43 +48,50 @@ void setClassroomLocation(double lat, double lon) {
 void loadClassroomLocation() {
     FILE* file = fopen(CLASSROOM_FILE, "r");
     if (file) {
-        if (fscanf(file, "%lf %lf", &class_lat, &class_lon) != 2) {
+        if (fscanf(file, "%lf %lf", &class_lat, &class_lon) == 2) {
+            classroom_set = 1;
+        } else {
             class_lat = 0.0;
             class_lon = 0.0;
+            classroom_set = 0;
         }
         fclose(file);
+    } else {
+        classroom_set = 0;
     }
-    // If file doesn't exist, defaults remain (0, 0)
 }
 
 void getCurrentClassroomLocation(double* lat, double* lon) {
-    // Load from file if not set in memory
-    if (class_lat == 0.0 && class_lon == 0.0) {
+    if (!classroom_set) {
         loadClassroomLocation();
     }
+
     *lat = class_lat;
     *lon = class_lon;
 }
 
 int validateLocation(double lat, double lon) {
-
-    if (class_lat == 0.0 && class_lon == 0.0) {
+    if (!classroom_set) {
         loadClassroomLocation();
+    }
+
+    if (!classroom_set) {
+        printf("ERROR: Classroom location not configured. Please ask teacher to set classroom location first.\n");
+        return 0;
     }
     
     double distance = haversineDistance(class_lat, class_lon, lat, lon);
-    if (distance <= MAX_RADIUS_KM) {
-        return 1;
-    } else {
-        return 0; 
-    }
+    return (distance <= MAX_RADIUS_KM);
 }
 
 double getDistanceFromClassroom(double lat, double lon) {
     // Ensure classroom location is loaded from file
-    if (class_lat == 0.0 && class_lon == 0.0) {
+    if (!classroom_set) {
         loadClassroomLocation();
+    }
+    if (!classroom_set) {
+        // Indicate invalid/unset with a negative value
+        return -1.0;
     }
     return haversineDistance(class_lat, class_lon, lat, lon);
 }
-
