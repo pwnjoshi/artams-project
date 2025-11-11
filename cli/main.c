@@ -199,7 +199,7 @@ void studentMenu() {
             printf("\nERROR: Location outside classroom range!\n");
             printf("Your coordinates: (%.6f, %.6f)\n", lat, lon);
             printf("Classroom location: (%.6f, %.6f)\n", classroom_lat, classroom_lon);
-            printf("Distance: %.2f km (max allowed: 0.1 km or 100 meters)\n", distance);
+            printf("Distance: %.2f km (max allowed: 0.2 km or 200 meters)\n", distance);
             printf("\nDo you want to try again? (y/n): ");
             fflush(stdout);
             clearInputBuffer();
@@ -219,7 +219,7 @@ void studentMenu() {
     // Mark attendance using the logged-in student's roll number
     markAttendance(rollNo, lat, lon, "Present");
 
-    printf("Attendance marked successfully for %s!\n", s->name);
+    printf("\nAttendance marked successfully for %s!\n", s->name);
     printf("Your location: (%.6f, %.6f)\n", lat, lon);
 }
 
