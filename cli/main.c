@@ -93,13 +93,23 @@ void teacherMenu() {
         scanf("%d", &choice);
 
         if (choice == 1) {
+            printf("\n=== Classroom Location Setup ===\n");
             printf("Enter classroom latitude: ");
             scanf("%lf", &lat);
             printf("Enter classroom longitude: ");
             scanf("%lf", &lon);
 
+            // modify wala kaam h iske niche : Allow custom radius
+            double radius;
+            printf("Enter validation radius in km (default 10.0, max 50.0): ");
+            scanf("%lf", &radius);
+            
+            setValidationRadius(radius);
             setClassroomLocation(lat, lon);
-            printf("Classroom location set to (%.6f, %.6f) successfully\n", lat, lon);
+            
+            printf("\n✓ Classroom location set to (%.6f, %.6f)\n", lat, lon);
+            printf("✓ Validation radius set to %.2f km (%.0f meters)\n", 
+                   getValidationRadius(), getValidationRadius() * 1000);
             
             displayToken(30);
             waitForUserInput(); 
@@ -163,6 +173,11 @@ void studentMenu() {
     printf("Logged in as: %s (Roll No: %d)\n", s->name, rollNo);
     
     getCurrentClassroomLocation(&classroom_lat, &classroom_lon);
+    
+    // ENHANCEMENT: Show validation radius to student
+    printf("Classroom location: (%.6f, %.6f)\n", classroom_lat, classroom_lon);
+    printf("Required proximity: %.2f km (%.0f meters)\n", 
+           getValidationRadius(), getValidationRadius() * 1000);
 
     // Token validation loop
     while (1) {
@@ -193,13 +208,25 @@ void studentMenu() {
         printf("\nEnter Location (latitude longitude): ");
         scanf("%lf %lf", &lat, &lon);
 
-        if (!validateLocation(lat, lon)) {
+        // ENHANCEMENT wala kaam h ye bhi
+        char status_msg[256];
+        int is_valid = validateLocationDetailed(lat, lon, status_msg, sizeof(status_msg));
+        
+        if (!is_valid) {
             char choice;
             double distance = getDistanceFromClassroom(lat, lon);
-            printf("\nERROR: Location outside classroom range!\n");
+            
+            printf("\n❌ VALIDATION FAILED\n");
+            printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+            printf("Status: %s\n", status_msg);
             printf("Your coordinates: (%.6f, %.6f)\n", lat, lon);
             printf("Classroom location: (%.6f, %.6f)\n", classroom_lat, classroom_lon);
-            printf("Distance: %.2f km (max allowed: 0.1 km or 100 meters)\n", distance);
+            printf("Distance: %.2f km (%.0f meters)\n", distance, distance * 1000);
+            printf("Accuracy: %s\n", getLocationAccuracy(distance));
+            printf("Max allowed: %.2f km (%.0f meters)\n", 
+                   getValidationRadius(), getValidationRadius() * 1000);
+            printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+            
             printf("\nDo you want to try again? (y/n): ");
             fflush(stdout);
             clearInputBuffer();
@@ -211,7 +238,13 @@ void studentMenu() {
                 return;
             }
         } else {
-            printf("\nLocation validated successfully!\n");
+            double distance = getDistanceFromClassroom(lat, lon);
+            printf("\n✓ VALIDATION SUCCESSFUL\n");
+            printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+            printf("Status: %s\n", status_msg);
+            printf("Distance: %.2f km (%.0f meters)\n", distance, distance * 1000);
+            printf("Accuracy: %s\n", getLocationAccuracy(distance));
+            printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
             break;
         }
     }
@@ -219,7 +252,7 @@ void studentMenu() {
     // Mark attendance using the logged-in student's roll number
     markAttendance(rollNo, lat, lon, "Present");
 
-    printf("Attendance marked successfully for %s!\n", s->name);
+    printf("\nAttendance marked successfully for %s!\n", s->name);
     printf("Your location: (%.6f, %.6f)\n", lat, lon);
 }
 
